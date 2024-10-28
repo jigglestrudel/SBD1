@@ -23,3 +23,8 @@ std::ostream& operator<<(std::ostream& os, const Record& obj)
 		<< obj.area();
 	return os;
 }
+
+int compareRecords(const void* left, const void* right)
+{
+	return ((Record*)left)->area() - ((Record*)right)->area();
+}

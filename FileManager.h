@@ -5,21 +5,21 @@
 #include <cstdlib>
 
 #include "Record.h"
+#include "Buffer.h"
 
 
 enum FileManagerState
 {
 	READING,
 	WRITING,
-	OFF,
-	ERROR
+	OFF
 };
 
 
 class FileManager
 {
 public:
-	FileManager(const char* filePath, size_t size);
+	FileManager(const char* filePath, size_t size, Buffer* buffer = nullptr);
 	~FileManager();
 
 	void readRecord(Record* dest);
@@ -32,12 +32,18 @@ public:
 	FileManagerState getState();
 	bool wasEndOfRecordsReached();
 
+	void changeBuffer(Buffer* buffer);
+
 private:
 	const char* filePath;
 	std::fstream file_stream;
-	std::byte* data_block_p;
+
+	Buffer* buffer;
+	bool is_buffer_foreign;
+
+	/*std::byte* data_block_p;
 	size_t data_block_size;
-	size_t data_block_cursor;
+	size_t data_block_cursor;*/
 
 	FileManagerState state;
 	bool was_eof_reached;

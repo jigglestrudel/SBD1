@@ -16,3 +16,5 @@ public:
 	friend inline bool operator>=(const Record& lhs, const Record& rhs);
 	friend std::ostream& operator<<(std::ostream& os, const Record& obj);
 };
+
+int compareRecords(const void* left, const void* right);

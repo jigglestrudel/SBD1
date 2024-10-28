@@ -108,3 +108,65 @@ void copyFileToFileByRecord(const char* src, const char* dest)
 		std::cerr << e.what() << std::endl;
 	}
 }
+
+void StrukturyBazDanych::sortUsingLargeBuffers(const char* filePath, int buffer_count, size_t block_size, bool print_debug)
+{
+	int b = block_size / sizeof(Record);
+	if (print_debug)
+	{
+		std::cout << "Sorting file " << filePath << " using n=" << buffer_count << " buffers\n"
+			<< "of size " << block_size << " bytes\n"
+			<< "giving blocking factor b=" << b << "\n";
+	}
+
+	//	Stage 0. (Creating the BIG BUFFERS)
+
+	// they will take up a big connected chunk of memory
+	std::byte* buffer_space = new std::byte[block_size * buffer_count];
+	Buffer** buffers = new Buffer*[buffer_count];
+	for (int i = 0; i < buffer_count; i++)
+	{
+		buffers[i] = new Buffer(buffer_space + i * block_size, block_size);
+	}
+
+	//  Stage 1. (Creating runs)
+	//	1. read n*b records and sort them
+	
+	//	here we want the FileReaders' buffer to take up all big buffers
+	//	for them to share the buffer between reading and writing
+	long int nb = buffer_count * b;
+	FileManager bigRunReader(filePath, block_size);
+	bigRunReader.startReading();
+
+	for (long int i = 0; i < nb; i++)
+	{
+		bigRunReader.readRecord((Record*)(buffer_space + (sizeof(Record) * i)));
+	}
+	bigRunReader.finishAndStop();
+
+	std::qsort(buffer_space, nb, sizeof(Record), compareRecords);
+	
+	//	2. write the big run onto disk
+	
+	FileManager bigRunWriter("1.bin", block_size);
+	bigRunWriter.startWriting();
+
+	for (long int i = 0; i < nb; i++)
+	{
+		bigRunWriter.writeRecord((Record*)(buffer_space + (sizeof(Record) * i)));
+	}
+
+	bigRunWriter.finishAndStop();
+
+	printOutFile("1.bin");
+
+
+
+
+	//	3. repeat until end of records
+
+	//	Stage 2. (Merging)
+	//	1. load n-1 runs
+	//	2. merge them using the n-th buffer
+	//	3. repeat until one run
+}

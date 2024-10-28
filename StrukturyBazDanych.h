@@ -16,3 +16,16 @@ void generateRecordsFromUser(const char* filePath, int n);
 void printOutFile(const char* filePath);
 void copyFileToFileByRecord(const char* src, const char* dest);
 
+class StrukturyBazDanych 
+{
+public:
+	StrukturyBazDanych();
+	~StrukturyBazDanych();
+
+	void static sortUsingLargeBuffers(const char* filePath, int buffer_number, size_t block_size, bool print_debug);
+
+
+private:
+
+};
+

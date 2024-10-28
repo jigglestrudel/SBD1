@@ -1,7 +1,7 @@
 #include "FileManager.h"
 
 
-FileManager::FileManager(const char* filePath, size_t size)
+FileManager::FileManager(const char* filePath, size_t size, Buffer* buffer)
 {
 	if (size < sizeof(Record))
 	{
@@ -10,10 +10,16 @@ FileManager::FileManager(const char* filePath, size_t size)
 	}
 
 	this->filePath = filePath;
-	this->data_block_p = new std::byte[size];
 	this->state = OFF;
+	/*this->data_block_p = new std::byte[size];
 	this->data_block_size = size;
-	this->data_block_cursor = 0;
+	this->data_block_cursor = 0;*/
+	this->is_buffer_foreign = true;
+	if (buffer == nullptr)
+	{
+		this->buffer = new Buffer(size);
+		this->is_buffer_foreign = false;
+	}
 	this->size_read = 0;
 	this->was_eof_reached = false;
 	this->end_of_records = false;
@@ -26,7 +32,9 @@ FileManager::~FileManager()
 		std::cerr << "FileManager::~FileManager : FileManager not off!\n";
 
 	}
-	delete data_block_p;
+	
+	if (!is_buffer_foreign)
+		delete buffer;
 }
 
 void FileManager::readRecord(Record* dest)
@@ -37,11 +45,11 @@ void FileManager::readRecord(Record* dest)
 		throw FileManagerException();
 	}
 
-	if (this->data_block_cursor == this->size_read)
+	if (buffer->getBufferCursor() == this->size_read)
 	{
 		this->readBlock();
 	}
-	else if (this->data_block_cursor > this->size_read)
+	else if (buffer->getBufferCursor() > this->size_read)
 	{
 		std::cerr << "FileManager::readRecord : Cursor out of bounds\n";
 		throw FileManagerException();
@@ -57,7 +65,7 @@ void FileManager::readRecord(Record* dest)
 
 	// case 1.	Block has enough bytes to read a record
 
-	if (this->size_read - this->data_block_cursor >= sizeof(Record) )
+	if (this->size_read - buffer->getBufferCursor() >= sizeof(Record) )
 	{
 		this->copyToAndMoveCursor(dest, sizeof(Record));
 	}
@@ -67,22 +75,22 @@ void FileManager::readRecord(Record* dest)
 	//			We need to read in another block
 	//			However for this scenario we need to have read a full block beforehand
 
-	else if (!this->was_eof_reached and this->size_read - this->data_block_cursor < sizeof(Record))
+	else if (!this->was_eof_reached and this->size_read - buffer->getBufferCursor() < sizeof(Record))
 	{
-		size_t bytes_prev = this->size_read - this->data_block_cursor;
+		size_t bytes_prev = this->size_read - buffer->getBufferCursor();
 		size_t bytes_next = sizeof(Record) - bytes_prev;
 
 		this->copyToAndMoveCursor(dest, bytes_prev);
 		this->readBlock();
 		this->copyToAndMoveCursor(dest + bytes_prev, bytes_next);
 	}
-	else if (this->was_eof_reached and this->size_read - this->data_block_cursor < sizeof(Record))
+	else if (this->was_eof_reached and this->size_read - buffer->getBufferCursor() < sizeof(Record))
 	{
 		std::cerr << "FileManager::readRecord : Not enough bytes for a record\n";
 		throw FileManagerException();
 	}
 
-	if (this->was_eof_reached and this->data_block_cursor == this->size_read)
+	if (this->was_eof_reached and buffer->getBufferCursor() == this->size_read)
 	{
 		this->end_of_records = true;
 	}
@@ -96,19 +104,13 @@ void FileManager::writeRecord(Record* source)
 		throw FileManagerException();
 	}
 
-	if (this->data_block_cursor > this->data_block_size)
-	{
-		std::cerr << "FileManager::writeRecord : Cursor out of bounds\n";
-		throw FileManagerException();
-	}
-
-	if (this->data_block_cursor + sizeof(Record) <= this->data_block_size)
+	if (buffer->canFit(sizeof(Record)))
 	{
 		this->copyFromAndMoveCursor(source, sizeof(Record));
 	}
 	else
 	{
-		size_t bytes_prev = this->data_block_size - this->data_block_cursor;
+		size_t bytes_prev = buffer->getSpaceLeft();
 		size_t bytes_next = sizeof(Record) - bytes_prev;
 		
 		this->copyFromAndMoveCursor(source, bytes_prev);
@@ -122,7 +124,7 @@ void FileManager::writeRecord(Record* source)
 void FileManager::startReading()
 {
 	this->openFileStream(READING);
-	this->data_block_cursor = 0;
+	buffer->resetBufferCursor();
 	this->size_read = 0;
 	this->was_eof_reached = false;
 	this->end_of_records = false;
@@ -131,7 +133,7 @@ void FileManager::startReading()
 void FileManager::startWriting()
 {
 	this->openFileStream(WRITING);
-	this->data_block_cursor = 0;
+	buffer->resetBufferCursor();
 }
 
 void FileManager::finishAndStop()
@@ -144,7 +146,7 @@ void FileManager::finishAndStop()
 
 	if (this->state == READING)
 	{
-		if (data_block_cursor != size_read)
+		if (this->buffer->getBufferCursor() != size_read)
 			std::cerr << "FileManager::finishAndStop : Not whole block processed yet\n";
 	}
 	if (this->state == WRITING)
@@ -213,7 +215,7 @@ void FileManager::closeFileStream()
 		this->file_stream.close();
 	}
 
-	this->data_block_cursor = 0;
+	buffer->resetBufferCursor();
 	this->state = OFF;
 }
 
@@ -225,13 +227,14 @@ void FileManager::readBlock()
 		throw FileManagerException();
 	}
 
-	if (data_block_cursor != size_read)
+	if (buffer->getBufferCursor() != size_read)
 		std::cerr << "FileManager::readBlock : Not whole block processed yet\n";
 
-	this->file_stream.read((char*)this->data_block_p, this->data_block_size);
+	buffer->resetBufferCursor();
+	this->file_stream.read((char*)(buffer->getBufferPointer()), buffer->getSize());
 	this->was_eof_reached = false;
-	this->size_read = this->data_block_size;
-	this->data_block_cursor = 0;
+	this->size_read = buffer->getSize();
+	buffer->resetBufferCursor();
 
 	if (this->file_stream.eof())
 	{
@@ -254,8 +257,8 @@ void FileManager::writeBlock()
 		throw FileManagerException();
 	}
 
-	this->file_stream.write((char*)this->data_block_p, this->data_block_size);
-	this->data_block_cursor = 0;
+	buffer->resetBufferCursor();
+	this->file_stream.write((char*)(buffer->getBufferPointer()), buffer->getSize());
 	if (!this->file_stream.good())
 	{
 		std::cerr << "FileManager::writeBlock : writing failed!\n";
@@ -271,8 +274,8 @@ void FileManager::writeBlockTillCursor()
 		throw FileManagerException();
 	}
 
-	this->file_stream.write((char*)this->data_block_p, this->data_block_cursor);
-	this->data_block_cursor = 0;
+	this->file_stream.write((char*)buffer->getBufferPointer(), buffer->getBufferCursor());
+	buffer->resetBufferCursor();
 	if (!this->file_stream.good())
 	{
 		std::cerr << "FileManager::writeBlock : writing failed!\n";
@@ -282,24 +285,24 @@ void FileManager::writeBlockTillCursor()
 
 void FileManager::copyToAndMoveCursor(void* dest, size_t count)
 {
-	if (this->data_block_cursor + count > this->size_read)
+	if (buffer->getBufferCursor() + count > this->size_read)
 	{
 		std::cerr << "FileManager::copyToAndMoveCursor : not enough bytes left in block\n";
 		throw FileManagerException();
 	}
 
-	memcpy(dest, this->data_block_p + this->data_block_cursor, count);
-	this->data_block_cursor += count;
+	memcpy(dest, buffer->getMovedBufferPointer(), count);
+	buffer->moveBufferCursor(count);
 }
 
 void FileManager::copyFromAndMoveCursor(void* src, size_t count)
 {
-	if (this->data_block_cursor + count > this->data_block_size)
+	if (!buffer->canFit(count))
 	{
 		std::cerr << "FileManager::copyFromAndMoveCursor : not enough free bytes left in block\n";
 		throw FileManagerException();
 	}
 
-	memcpy(this->data_block_p + this->data_block_cursor, src, count);
-	this->data_block_cursor += count;
+	memcpy(buffer->getMovedBufferPointer(), src, count);
+	buffer->moveBufferCursor(count);
 }
