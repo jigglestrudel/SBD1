@@ -4,10 +4,10 @@
 int main(int argc, char** argv)
 {
 	std::cout << "Hello world!\n";
-	generateRandomRecords("random500.bin", 500);
-	printOutFile("random500.bin");
+	generateOrderedRecords("random100.bin", 100);
+	printOutFile("random100.bin");
 	
-	StrukturyBazDanych::sortUsingLargeBuffers("random500.bin", 10, 500, true);
+	StrukturyBazDanych::sortUsingLargeBuffers("random100.bin", 5, 48, true);
 	
 	return 0;
 }

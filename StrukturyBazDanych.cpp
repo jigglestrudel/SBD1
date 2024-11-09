@@ -28,6 +28,34 @@ void generateRandomRecords(const char* filePath, int n)
 	}
 }
 
+void generateOrderedRecords(const char* filePath, int n)
+{
+	srand(time(NULL));
+	std::cout << "Writing " << n << " random records to " << filePath << "\n";
+
+	try
+	{
+		FileManager fileWriter(filePath, TWO_KILOBYTES);
+		fileWriter.startWriting();
+
+		for (int i = 0; i < n; i++)
+		{
+			Record record;
+			record.a = (i + 1);
+			record.b = (i + 1);
+			record.h = (i + 1);
+
+			fileWriter.writeRecord(&record);
+		}
+
+		fileWriter.finishAndStop();
+	}
+	catch (const FileManagerException& e)
+	{
+		std::cerr << e.what() << std::endl;
+	}
+}
+
 void generateRecordsFromUser(const char* filePath, int n)
 {
 	std::cout << "Writing " << n << " user-generated records to " << filePath << "\n";
@@ -70,8 +98,15 @@ void printOutFile(const char* filePath)
 		while (!fileReader.wasEndOfRecordsReached())
 		{
 			Record record;
-			fileReader.readRecord(&record);
-			std::cout << record << '\n';
+			try 
+			{
+				fileReader.readRecord(&record);
+				std::cout << record << '\n';
+			}
+			catch (FileManagerNoRecords& e)
+			{
+				break;
+			}
 		}
 
 		fileReader.finishAndStop();
@@ -135,38 +170,60 @@ void StrukturyBazDanych::sortUsingLargeBuffers(const char* filePath, int buffer_
 	//	here we want the FileReaders' buffer to take up all big buffers
 	//	for them to share the buffer between reading and writing
 	long int nb = buffer_count * b;
+	//char* fileName = new char[14];
 	FileManager bigRunReader(filePath, block_size);
 	bigRunReader.startReading();
+	int fileCounter = 0;
 
-	for (long int i = 0; i < nb; i++)
+	while (!bigRunReader.wasEndOfRecordsReached())
 	{
-		bigRunReader.readRecord((Record*)(buffer_space + (sizeof(Record) * i)));
+		long int records_read = 0;
+		
+			
+		for (records_read = 0; records_read < nb; records_read++)
+		{
+			try
+			{
+				bigRunReader.readRecord((Record*)(buffer_space + (sizeof(Record) * records_read)));
+			}
+			catch (FileManagerNoRecords& e)
+			{
+				break;
+			}
+		}
+
+		if (bigRunReader.wasEndOfRecordsReached())
+			break;
+		
+		//std::qsort(buffer_space, records_read, sizeof(Record), compareRecords);
+
+		//	2. write the big run onto disk
+		fileCounter++;
+		std::string fileName = std::to_string(fileCounter) + ".bin";
+
+		FileManager bigRunWriter(fileName.c_str(), block_size);
+		bigRunWriter.startWriting();
+
+		for (long int i = 0; i < records_read; i++)
+		{
+			bigRunWriter.writeRecord((Record*)(buffer_space + (sizeof(Record) * i)));
+		}
+
+		bigRunWriter.finishAndStop();
+
+		if (print_debug)
+			printOutFile(fileName.c_str());
+
+		//	3. repeat until end of records
 	}
 	bigRunReader.finishAndStop();
-
-	std::qsort(buffer_space, nb, sizeof(Record), compareRecords);
-	
-	//	2. write the big run onto disk
-	
-	FileManager bigRunWriter("1.bin", block_size);
-	bigRunWriter.startWriting();
-
-	for (long int i = 0; i < nb; i++)
-	{
-		bigRunWriter.writeRecord((Record*)(buffer_space + (sizeof(Record) * i)));
-	}
-
-	bigRunWriter.finishAndStop();
-
-	printOutFile("1.bin");
-
-
-
-
-	//	3. repeat until end of records
 
 	//	Stage 2. (Merging)
 	//	1. load n-1 runs
 	//	2. merge them using the n-th buffer
 	//	3. repeat until one run
+
+	std::cout << "Done!\n";
+	delete[] buffers;
+	delete[] buffer_space;
 }

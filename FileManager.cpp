@@ -58,7 +58,8 @@ void FileManager::readRecord(Record* dest)
 	if (this->size_read < sizeof(Record))
 	{
 		std::cerr << "FileManager::readRecord : Read size smaller than one record\n";
-		throw FileManagerException();
+		this->end_of_records = true;
+		throw FileManagerNoRecords();
 	}
 
 	// While reading there are 2 cases

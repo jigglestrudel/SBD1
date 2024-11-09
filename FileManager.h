@@ -65,3 +65,9 @@ struct FileManagerException : public std::exception {
 		return "FileManager exception";
 	}
 };
+
+struct FileManagerNoRecords : FileManagerException {
+	const char* what() const throw () {
+		return "FileManagerNoRecords exception";
+	}
+};
