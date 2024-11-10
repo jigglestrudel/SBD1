@@ -24,12 +24,14 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Record.cpp" />
     <ClCompile Include="StrukturyBazDanych.cpp" />
+    <ClCompile Include="TournamentTree.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="FileManager.h" />
     <ClInclude Include="Record.h" />
     <ClInclude Include="StrukturyBazDanych.h" />
+    <ClInclude Include="TournamentTree.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

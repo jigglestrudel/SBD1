@@ -34,6 +34,9 @@ public:
 
 	void changeBuffer(Buffer* buffer);
 
+	long long unsigned int getDiscReadCount();
+	long long unsigned int getDiscWriteCount();
+
 private:
 	const char* filePath;
 	std::fstream file_stream;
@@ -41,9 +44,8 @@ private:
 	Buffer* buffer;
 	bool is_buffer_foreign;
 
-	/*std::byte* data_block_p;
-	size_t data_block_size;
-	size_t data_block_cursor;*/
+	long long unsigned int disc_read_count;
+	long long unsigned int disc_write_count;
 
 	FileManagerState state;
 	bool was_eof_reached;

@@ -11,18 +11,23 @@ FileManager::FileManager(const char* filePath, size_t size, Buffer* buffer)
 
 	this->filePath = filePath;
 	this->state = OFF;
-	/*this->data_block_p = new std::byte[size];
-	this->data_block_size = size;
-	this->data_block_cursor = 0;*/
-	this->is_buffer_foreign = true;
+	
 	if (buffer == nullptr)
 	{
 		this->buffer = new Buffer(size);
 		this->is_buffer_foreign = false;
 	}
+	else
+	{
+		this->is_buffer_foreign = true;
+		this->buffer = buffer;
+	}
 	this->size_read = 0;
 	this->was_eof_reached = false;
 	this->end_of_records = false;
+
+	this->disc_read_count = 0;
+	this->disc_write_count = 0;
 }
 
 FileManager::~FileManager()
@@ -57,7 +62,7 @@ void FileManager::readRecord(Record* dest)
 
 	if (this->size_read < sizeof(Record))
 	{
-		std::cerr << "FileManager::readRecord : Read size smaller than one record\n";
+		//std::cerr << "FileManager::readRecord : Read size smaller than one record\n";
 		this->end_of_records = true;
 		throw FileManagerNoRecords();
 	}
@@ -83,7 +88,7 @@ void FileManager::readRecord(Record* dest)
 
 		this->copyToAndMoveCursor(dest, bytes_prev);
 		this->readBlock();
-		this->copyToAndMoveCursor(dest + bytes_prev, bytes_next);
+		this->copyToAndMoveCursor((std::byte*)dest + bytes_prev, bytes_next);
 	}
 	else if (this->was_eof_reached and this->size_read - buffer->getBufferCursor() < sizeof(Record))
 	{
@@ -116,7 +121,7 @@ void FileManager::writeRecord(Record* source)
 		
 		this->copyFromAndMoveCursor(source, bytes_prev);
 		this->writeBlock();
-		this->copyFromAndMoveCursor(source + bytes_prev, bytes_next);
+		this->copyFromAndMoveCursor((std::byte*)source + bytes_prev, bytes_next);
 
 	}
 
@@ -166,6 +171,24 @@ FileManagerState FileManager::getState()
 bool FileManager::wasEndOfRecordsReached()
 {
 	return this->end_of_records;
+}
+
+void FileManager::changeBuffer(Buffer* buffer)
+{
+	if (!this->is_buffer_foreign)
+		delete this->buffer;
+	this->is_buffer_foreign = true;
+	this->buffer = buffer;
+}
+
+long long unsigned int FileManager::getDiscReadCount()
+{
+	return this->disc_read_count;
+}
+
+long long unsigned int FileManager::getDiscWriteCount()
+{
+	return this->disc_write_count;
 }
 
 void FileManager::openFileStream(FileManagerState desired_state)
@@ -222,6 +245,8 @@ void FileManager::closeFileStream()
 
 void FileManager::readBlock()
 {
+	this->disc_read_count++;
+
 	if (this->state != READING)
 	{
 		std::cerr << "FileManager::readBlock : Wrong FileManagerState\n";
@@ -252,6 +277,8 @@ void FileManager::readBlock()
 
 void FileManager::writeBlock()
 {
+	this->disc_write_count++;
+
 	if (this->state != WRITING)
 	{
 		std::cerr << "FileManager::writeBlock : Wrong FileManagerState\n";
@@ -269,6 +296,9 @@ void FileManager::writeBlock()
 
 void FileManager::writeBlockTillCursor()
 {
+	if (buffer->getBufferCursor() != 0)
+		this->disc_write_count++;
+
 	if (this->state != WRITING)
 	{
 		std::cerr << "FileManager::writeBlock : Wrong FileManagerState\n";
