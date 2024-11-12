@@ -9,7 +9,9 @@ FileManager::FileManager(const char* filePath, size_t size, Buffer* buffer)
 		throw FileManagerException();
 	}
 
-	this->filePath = filePath;
+
+	this->filePath = new char[strlen(filePath) + 1];
+	std::strcpy(this->filePath, filePath);
 	this->state = OFF;
 	
 	if (buffer == nullptr)
@@ -40,6 +42,7 @@ FileManager::~FileManager()
 	
 	if (!is_buffer_foreign)
 		delete buffer;
+	//delete[] this->filePath;
 }
 
 void FileManager::readRecord(Record* dest)
@@ -213,6 +216,8 @@ void FileManager::openFileStream(FileManagerState desired_state)
 			throw FileManagerException();
 		}
 		this->state = READING;
+		this->file_position = this->file_stream.tellg();
+		this->file_stream.close();
 	}
 	else if (desired_state == WRITING)
 	{
@@ -223,6 +228,7 @@ void FileManager::openFileStream(FileManagerState desired_state)
 			throw FileManagerException();
 		}
 		this->state = WRITING;
+		this->file_stream.close();
 	}
 }
 
@@ -256,6 +262,9 @@ void FileManager::readBlock()
 	if (buffer->getBufferCursor() != size_read)
 		std::cerr << "FileManager::readBlock : Not whole block processed yet\n";
 
+	this->file_stream = std::fstream(filePath, std::ios_base::in | std::ios_base::binary);
+	this->file_stream.seekg(this->file_position);
+
 	buffer->resetBufferCursor();
 	this->file_stream.read((char*)(buffer->getBufferPointer()), buffer->getSize());
 	this->was_eof_reached = false;
@@ -273,6 +282,9 @@ void FileManager::readBlock()
 		std::cerr << "FileManager::readBlock : reading failed!\n";
 		throw FileManagerException();
 	}
+
+	this->file_position = this->file_stream.tellg();
+	this->file_stream.close();
 }
 
 void FileManager::writeBlock()
@@ -284,6 +296,7 @@ void FileManager::writeBlock()
 		std::cerr << "FileManager::writeBlock : Wrong FileManagerState\n";
 		throw FileManagerException();
 	}
+	this->file_stream = std::fstream(filePath, std::ios_base::out | std::ios_base::binary | std::ios_base::app);
 
 	buffer->resetBufferCursor();
 	this->file_stream.write((char*)(buffer->getBufferPointer()), buffer->getSize());
@@ -292,6 +305,8 @@ void FileManager::writeBlock()
 		std::cerr << "FileManager::writeBlock : writing failed!\n";
 		throw FileManagerException();
 	}
+
+	this->file_stream.close();
 }
 
 void FileManager::writeBlockTillCursor()
@@ -304,6 +319,7 @@ void FileManager::writeBlockTillCursor()
 		std::cerr << "FileManager::writeBlock : Wrong FileManagerState\n";
 		throw FileManagerException();
 	}
+	this->file_stream = std::fstream(filePath, std::ios_base::out | std::ios_base::binary | std::ios_base::app);
 
 	this->file_stream.write((char*)buffer->getBufferPointer(), buffer->getBufferCursor());
 	buffer->resetBufferCursor();
@@ -312,6 +328,8 @@ void FileManager::writeBlockTillCursor()
 		std::cerr << "FileManager::writeBlock : writing failed!\n";
 		throw FileManagerException();
 	}
+	this->file_stream.close();
+
 }
 
 void FileManager::copyToAndMoveCursor(void* dest, size_t count)

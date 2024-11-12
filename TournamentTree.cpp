@@ -4,9 +4,13 @@ TournamentTree::TournamentTree(int player_count)
 {
 	int leaf_node_count = pow(2, ceil(log2(player_count)));
 	this->added_player_count = 0;
-	this->player_count_limit = leaf_node_count;
+	this->player_count_limit = player_count;
 	this->node_count = leaf_node_count * 2 - 1;
-	this->heap = new std::pair<Record, int>[node_count];
+	this->heap = new int[node_count];
+	for (int i = 0; i < node_count; i++)
+		this->heap[i] = player_count;
+	this->players = new Record[player_count + 1];
+	this->players[player_count] = INFRECORD;
 }
 
 TournamentTree::~TournamentTree()
@@ -14,44 +18,56 @@ TournamentTree::~TournamentTree()
 	delete[] this->heap;
 }
 
-void TournamentTree::addPlayer(Record player)
+void TournamentTree::addPlayer(Record* player)
 {
 	if (this->added_player_count >= this->player_count_limit)
 		return;
 
 	int player_number = this->added_player_count++;
-	this->heap[this->node_count - player_number - 1] = std::pair<Record, int>(player, player_number);
+	this->players[player_number] = *player;
+	this->heap[this->node_count - player_number - 1] = player_number;
 }
 
-void TournamentTree::changePlayer(int player_number, Record new_player)
+void TournamentTree::changePlayer(int player_number, Record* new_player)
 {
 	if (player_number >= added_player_count)
 		return;
-
-	this->heap[this->node_count - player_number - 1] = std::pair<Record, int>(new_player, player_number);
+	this->players[player_number] = *new_player;
 }
 
 void TournamentTree::runTournament()
 {
 	// if not all player slots filled out we need to skip some games using inf-players
-	if (added_player_count < player_count_limit)
+	
+	/*int child_node = this->node_count - added_player_count;
+	do
 	{
-		int child_node = this->node_count - added_player_count;
-		do
+		if (isRightChild(child_node))
 		{
-			if (isRightChild(child_node))
-			{
-				int left_sibling = getLeftChild(getParent(child_node));
-				heap[left_sibling] = std::pair<Record, int>(INFRECORD, -1);
-			}
-			child_node = getParent(child_node);
+			int left_sibling = getLeftChild(getParent(child_node));
+			heap[left_sibling] = player_count_limit;
+		}
+		child_node = getParent(child_node);
 
-		} while (child_node != 0);
-	}
-
+	} while (child_node != 0);*/
 
 	for (int player_number = 0; player_number < added_player_count; player_number += 2)
 		runTournamentForPlayer(player_number);
+
+}
+
+void TournamentTree::playGameForNode(int contested_node)
+{
+	int left_child_node = getLeftChild(contested_node);
+	int right_child_node = getRightChild(contested_node);
+	if (players[heap[left_child_node]] < players[heap[right_child_node]])
+	{
+		this->heap[contested_node] = heap[left_child_node];
+	}
+	else
+	{
+		this->heap[contested_node] = heap[right_child_node];
+	}
 }
 
 void TournamentTree::runTournamentForPlayer(int player_number)
@@ -62,16 +78,7 @@ void TournamentTree::runTournamentForPlayer(int player_number)
 	do
 	{
 		contested_node = getParent(player_node);
-		std::pair<Record, int> left_child = this->heap[getLeftChild(contested_node)];
-		std::pair<Record, int> right_child = this->heap[getRightChild(contested_node)];
-		if (left_child.first < right_child.first)
-		{
-			this->heap[contested_node] = left_child;
-		}
-		else
-		{
-			this->heap[contested_node] = right_child;
-		}
+		playGameForNode(contested_node);
 
 		player_node = contested_node;
 
@@ -80,9 +87,14 @@ void TournamentTree::runTournamentForPlayer(int player_number)
 
 }
 
-std::pair<Record, int> TournamentTree::getWinner()
+int TournamentTree::getWinner()
 {
-	return this->heap[0];
+	return heap[0];
+}
+
+Record* TournamentTree::getWinnerRecord()
+{
+	return players + heap[0];
 }
 
 int TournamentTree::getParent(int child)
@@ -109,3 +121,4 @@ bool TournamentTree::isRightChild(int child)
 {
 	return child % 2 == 0;
 }
+

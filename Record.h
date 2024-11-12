@@ -14,15 +14,16 @@ public:
 	Record(double a, double b, double h) : a(a), b(b), h(h) {};
 
 	double area() const;
+	void print();
 
 };
 
 bool operator<(const Record& l, const Record& r);
 bool operator==(const Record& l, const Record& r);
-inline bool operator!=(const Record& l, const Record& r);
-inline bool operator> (const Record& lhs, const Record& rhs);
-inline bool operator<=(const Record& lhs, const Record& rhs);
-inline bool operator>=(const Record& lhs, const Record& rhs);
+inline bool operator!=(const Record& l, const Record& r) { return !(l == r); }
+inline bool operator> (const Record& lhs, const Record& rhs) { return rhs < lhs; }
+inline bool operator<=(const Record& lhs, const Record& rhs) { return !(lhs > rhs); }
+inline bool operator>=(const Record& lhs, const Record& rhs) { return !(lhs < rhs); }
 std::ostream& operator<<(std::ostream& os, const Record& obj);
 
 

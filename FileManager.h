@@ -1,4 +1,6 @@
 #pragma once
+#define _CRT_SECURE_NO_WARNINGS
+
 #include <iostream>
 #include <fstream>
 #include <exception>
@@ -38,8 +40,9 @@ public:
 	long long unsigned int getDiscWriteCount();
 
 private:
-	const char* filePath;
+	char* filePath;
 	std::fstream file_stream;
+	std::streampos file_position;
 
 	Buffer* buffer;
 	bool is_buffer_foreign;

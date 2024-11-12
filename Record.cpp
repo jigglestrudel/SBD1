@@ -5,14 +5,17 @@ double Record::area() const
 	return (a + b) * 0.5 * h;
 }
 
+void Record::print()
+{
+	std::printf("%10.2f%10.2f%10.2f%10.2f", a, b, h, area());
+}
+
 bool operator<(const Record& l, const Record& r)
 {
 	return l.area() < r.area();
 }
 
-inline bool operator> (const Record& lhs, const Record& rhs) { return rhs < lhs; }
-inline bool operator<=(const Record& lhs, const Record& rhs) { return !(lhs > rhs); }
-inline bool operator>=(const Record& lhs, const Record& rhs) { return !(lhs < rhs); }
+
 
 bool operator==(const Record& l, const Record& r)
 {
@@ -24,7 +27,6 @@ bool operator==(const Record& l, const Record& r)
 	return l.a == r.a && l.b == r.b && l.h == r.h;
 }
 
-inline bool operator!=(const Record& l, const Record& r) { return !(l == r); }
 
 std::ostream& operator<<(std::ostream& os, const Record& obj)
 {
@@ -33,12 +35,18 @@ std::ostream& operator<<(std::ostream& os, const Record& obj)
 		<< obj.b << '\t'
 		<< obj.h << '\t'
 		<< obj.area();
+	
 	return os;
 }
 
+
 int compareRecords(const void* left, const void* right)
 {
-	return ((Record*)left)->area() - ((Record*)right)->area();
+	if ((*(Record*)left) > (*(Record*)right))
+		return 1;
+	if ((*(Record*)left) < (*(Record*)right))
+		return -1;
+	return 0;
 }
 
 

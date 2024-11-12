@@ -9,11 +9,13 @@ public:
 	TournamentTree(int player_count);
 	~TournamentTree();
 
-	void addPlayer(Record player);
-	void changePlayer(int player_number, Record new_player);
+	void addPlayer(Record* player);
+	void changePlayer(int player_number, Record* new_player);
 	void runTournament();
 	void runTournamentForPlayer(int player_number);
-	std::pair<Record, int> getWinner();
+	int getWinner();
+	Record* getWinnerRecord();
+	
 
 private:
 
@@ -23,9 +25,13 @@ private:
 	bool isLeftChild(int child);
 	bool isRightChild(int child);
 
+	void playGameForNode(int contested_node);
+
+	
 	int added_player_count;
 	int player_count_limit;
 	int node_count;
-	std::pair<Record, int>* heap;
+	int* heap;
+	Record* players;
 };
 
