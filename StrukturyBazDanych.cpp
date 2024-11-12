@@ -128,7 +128,7 @@ void StrukturyBazDanych::generateRandomRecords(const char* filePath, int n)
 
 			fileWriter.writeRecord(&record);
 
-			if (i % (n / 20) == (n / 20)-1)
+			if (n>20 && i % (n / 20) == (n / 20)-1)
 				std::cout << "#";
 		}
 		
